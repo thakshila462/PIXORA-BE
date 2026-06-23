@@ -14,40 +14,54 @@ import enhanceRoute from "./routes/enhanceRoute";
 import serviceRequestRouter from "./routes/serviceRequestRoutes";
 import userRouter from "./routes/UserRoutes";
 import adminRoutes from "./routes/adminRoutes";
+
 import mongoDB from "./config/db";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Environment validation
+/* =========================
+   ENV CHECK (SAFE VERSION)
+========================= */
 const requiredEnvVars = ["DB_URL", "JWT_SECRET", "JWT_REFRESH_SECRET"];
+
 const missingVars = requiredEnvVars.filter((v) => !process.env[v]);
 
 if (missingVars.length > 0) {
-  console.error(
-    `❌ Missing required environment variables: ${missingVars.join(", ")}`,
-  );
-
-  if (process.env.NODE_ENV === "production") {
-    process.exit(1);
-  }
+  console.error("❌ Missing ENV:", missingVars.join(", "));
 }
+
+/* =========================
+   CORS FIX (VERY IMPORTANT)
+========================= */
 
 app.use(
   cors({
-    origin: ["https://pixora-fe.vercel.app", "http://localhost:5173"],
+    origin: [
+      "https://pixora-fe.vercel.app",
+      "http://localhost:5173",
+      "http://localhost:3000",
+    ],
     credentials: true,
   }),
 );
 
+/* =========================
+   MIDDLEWARE
+========================= */
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+/* =========================
+   CONNECT DB ON START ONLY
+========================= */
 mongoDB()
   .then(() => console.log("DB connected"))
-  .catch((err) => console.error("DB error", err));
+  .catch((err) => console.error("DB error:", err));
 
-// Routes
+/* =========================
+   ROUTES
+========================= */
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/packages", packageRouter);
 app.use("/api/v1/service-request", serviceRequestRouter);
@@ -56,19 +70,26 @@ app.use("/api/v1/enhance", enhanceRoute);
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/admin", adminRoutes);
 
-// Health check
+/* =========================
+   HEALTH CHECK
+========================= */
 app.get("/", (req, res) => {
   res.status(200).json({
     success: true,
-    message: "TypeScript API is running successfully on Vercel 🚀",
+    message: "API running successfully 🚀",
   });
 });
 
-// Local development only
+/* =========================
+   LOCAL ONLY SERVER
+========================= */
 if (process.env.NODE_ENV !== "production") {
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
   });
 }
 
+/* =========================
+   VERCEL EXPORT
+========================= */
 export default app;

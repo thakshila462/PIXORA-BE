@@ -2,29 +2,23 @@ import mongoose from "mongoose";
 
 const DB_URL = process.env.DB_URL as string;
 
-let dbConnection: Promise<typeof mongoose> | null = null;
+let isConnected = false;
 
 const mongoDB = async () => {
-  if (dbConnection) {
-    return dbConnection;
-  }
+  if (isConnected) return;
 
   if (!DB_URL) {
-    throw new Error("DB_URL environment variable is not set");
+    throw new Error("DB_URL is not set in environment variables");
   }
-
-  dbConnection = mongoose.connect(DB_URL);
 
   try {
-    await dbConnection;
+    await mongoose.connect(DB_URL);
+    isConnected = true;
     console.log("✅ MongoDB connected");
   } catch (error) {
-    dbConnection = null;
-    console.error("❌ DB connection error:", error);
+    console.error("❌ MongoDB connection error:", error);
     throw error;
   }
-
-  return dbConnection;
 };
 
 export default mongoDB;
