@@ -27,29 +27,7 @@ if (missingVars.length > 0) {
   console.error("❌ Missing ENV:", missingVars.join(", "));
 }
 
-/* =========================
-   CORS FIX (VERY IMPORTANT)
-========================= */
-const allowedOrigins = [
-  "https://pixora-fe.vercel.app",
-  "http://localhost:5173",
-  "http://localhost:3000",
-];
-
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // allow requests with no origin (server-to-server, curl, Postman)
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      console.warn("❌ Blocked by CORS:", origin);
-      return callback(new Error("Not allowed by CORS"));
-    },
-    credentials: true,
-  }),
-);
+app.use(cors());
 
 /* =========================
    MIDDLEWARE
