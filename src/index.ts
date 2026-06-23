@@ -51,9 +51,6 @@ app.use(
   }),
 );
 
-// Explicitly handle preflight for ALL routes
-app.options("*", cors());
-
 /* =========================
    MIDDLEWARE
 ========================= */
