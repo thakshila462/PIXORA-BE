@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 
 const DB_URL = process.env.DB_URL as string;
-
 let isConnected = false;
 
 const mongoDB = async () => {
@@ -16,6 +15,7 @@ const mongoDB = async () => {
     isConnected = true;
     console.log("✅ MongoDB connected");
   } catch (error) {
+    isConnected = false;
     console.error("❌ MongoDB connection error:", error);
     throw error;
   }
