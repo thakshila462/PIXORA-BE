@@ -7,8 +7,18 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const JWT_SECRET = process.env.JWT_SECRET as string;
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET as string;
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
+
+const jwtConfigIsValid = (): boolean => {
+  if (!JWT_SECRET || !JWT_REFRESH_SECRET) {
+    console.error(
+      "Missing JWT_SECRET or JWT_REFRESH_SECRET environment variables",
+    );
+    return false;
+  }
+  return true;
+};
 
 // ================= REGISTER =================
 export const registerUser = async (req: Request, res: Response) => {
@@ -68,19 +78,25 @@ export const login = async (req: Request, res: Response) => {
     if (!user)
       return res.status(401).json({ message: "Invalid email or password" });
 
+    if (!jwtConfigIsValid()) {
+      return res
+        .status(500)
+        .json({ message: "Server token configuration error" });
+    }
+
     const ok = await bcrypt.compare(password, user.password);
     if (!ok)
       return res.status(401).json({ message: "Invalid email or password" });
 
     const accessToken = jwt.sign(
       { sub: user._id.toString(), roles: user.roles },
-      JWT_SECRET,
+      JWT_SECRET as string,
       { expiresIn: "1h" },
     );
 
     const refreshToken = jwt.sign(
       { sub: user._id.toString() },
-      JWT_REFRESH_SECRET,
+      JWT_REFRESH_SECRET as string,
       {
         expiresIn: "7d",
       },
@@ -96,6 +112,7 @@ export const login = async (req: Request, res: Response) => {
       },
     });
   } catch (err) {
+    console.error("Login error:", err);
     return res.status(500).json({ message: "Login failed" });
   }
 };
