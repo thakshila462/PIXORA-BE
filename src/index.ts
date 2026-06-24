@@ -1,116 +1,55 @@
-import dotenv from "dotenv";
-dotenv.config();
-
+// Force Node to use public DNS (Mongo SRV fix)
 import dns from "node:dns";
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 import express from "express";
 import cors from "cors";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+
+// ROUTES
 import authRouter from "./routes/authRouters";
 import packageRouter from "./routes/packageRoutes";
-import aiRoutes from "./routes/aiRoutes";
-import enhanceRoute from "./routes/enhanceRoute";
-import serviceRequestRouter from "./routes/serviceRequestRoutes";
-import userRouter from "./routes/UserRoutes";
-import adminRoutes from "./routes/adminRoutes";
-import mongoDB from "./config/db";
+dotenv.config();
 
 const app = express();
+
 const PORT = process.env.PORT || 5000;
+const DB_URL =
+  process.env.DB_URL || "mongodb://127.0.0.1:27017/customer_db";
 
-/* =========================
-   ENV CHECK (SAFE VERSION)
-========================= */
-const requiredEnvVars = ["DB_URL", "JWT_SECRET", "JWT_REFRESH_SECRET"];
-const missingVars = requiredEnvVars.filter((v) => !process.env[v]);
-if (missingVars.length > 0) {
-  console.error("❌ Missing ENV:", missingVars.join(", "));
-}
-
-app.use(cors());
-
-/* =========================
-   MIDDLEWARE
-========================= */
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-/* =========================
-   DB CONNECTION MIDDLEWARE
-   (ensures connection per-request on serverless,
-   instead of relying only on cold-start connect)
-========================= */
-app.use(async (req, res, next) => {
-  try {
-    await mongoDB();
-    next();
-  } catch (err) {
-    console.error("❌ DB connection failed:", err);
-    res.status(500).json({
-      success: false,
-      message: "Database connection failed",
-    });
-  }
-});
-
-/* =========================
-   ROUTES
-========================= */
-app.use("/api/v1/auth", authRouter);
-app.use("/api/v1/packages", packageRouter);
-app.use("/api/v1/service-request", serviceRequestRouter);
-app.use("/api/v1/ai", aiRoutes);
-app.use("/api/v1/enhance", enhanceRoute);
-app.use("/api/v1/users", userRouter);
-app.use("/api/v1/admin", adminRoutes);
-
-/* =========================
-   HEALTH CHECK
-========================= */
-app.get("/", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "API running successfully 🚀",
-  });
-});
-
-/* =========================
-   404 HANDLER
-========================= */
-app.use((req, res) => {
-  res.status(404).json({ success: false, message: "Route not found" });
-});
-
-/* =========================
-   GLOBAL ERROR HANDLER
-   (so crashes return JSON + CORS headers
-   instead of a bare Vercel error page)
-========================= */
+// MIDDLEWARES
 app.use(
-  (
-    err: any,
-    req: express.Request,
-    res: express.Response,
-    next: express.NextFunction,
-  ) => {
-    console.error("🔥 Unhandled error:", err);
-    res.status(500).json({
-      success: false,
-      message: err.message || "Internal server error",
-    });
-  },
+  cors({
+    origin: [
+      "http://localhost:5173", // Vite React
+      "http://localhost:3000", // React
+      "https://pixora-fe.vercel.app"
+    ],
+    credentials: true,
+  })
 );
 
-/* =========================
-   LOCAL ONLY SERVER
-========================= */
-if (process.env.NODE_ENV !== "production") {
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-  });
-}
+app.use(express.json());
 
-/* =========================
-   VERCEL EXPORT
-========================= */
-export default app;
+// ROUTES
+app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/packages", packageRouter);
+// HEALTH CHECK
+app.get("/", (req, res) => {
+  res.send("API is running 🚀");
+});
+
+// CONNECT DB THEN START SERVER
+mongoose
+  .connect(DB_URL)
+  .then(() => {
+    console.log("✅ MongoDB connected successfully");
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Server is running on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("❌ MongoDB connection error:", err.message);
+  });
